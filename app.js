@@ -1,14 +1,14 @@
 const express = require('express');
-const pool = require('./db');
+const monsters = require('./routes/monsters');
+const bodyParser = require('body-parser');
 
 const app = express();
 
-app.get('/monsters', (request, response) => {
-    pool.query('SELECT * FROM monsters', (err, res) => {
-        if (err) return console.log(err);
-    
-        response.json(res.rows);
-    });
+app.use(bodyParser.json());
+app.use('/monsters', monsters);
+
+app.use((err, req, res, next) => {
+    res.json(err);
 });
 
 module.exports = app;
