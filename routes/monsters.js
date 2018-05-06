@@ -33,6 +33,24 @@ router.post('/', (request, response, next) => {
     );
 });
 
+router.put('/:id', (request, response, next) => {
+    const { id } = request.params;
+
+    const { name, personality } = request.body;
+
+    pool.query(
+        'UPDATE monsters SET name = ($1), personality = ($2) WHERE id = ($3)',
+        [name, personality, id],
+        (err, res) => {
+            if (err) {
+                return next(err);
+            }
+
+            response.redirect('/monsters');
+        }
+    )
+})
+
 module.exports = router;
 
 
