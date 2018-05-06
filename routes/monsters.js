@@ -7,7 +7,6 @@ const router = Router();
 router.get('/', (request, response, next) => {
     pool.query('SELECT * FROM monsters ORDER BY id ASC', (err, res) => {
         if (err) {
-            console.log('ABC');
             return next(err);
         }
         response.json(res.rows);

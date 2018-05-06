@@ -11,7 +11,7 @@ module.exports = {
         user: 'node_user',
         password: 'node_password',
         host: 'localhost',
-        database: 'monstersdb',
+        database: 'qldd_face',
         port: 5432
     }
 }

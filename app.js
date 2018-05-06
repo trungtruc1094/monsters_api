@@ -1,11 +1,13 @@
 const express = require('express');
 const monsters = require('./routes/monsters');
+const students = require('./routes/students');
 const bodyParser = require('body-parser');
 
 const app = express();
 
 app.use(bodyParser.json());
 app.use('/monsters', monsters);
+app.use('/students', students);
 
 app.use((err, req, res, next) => {
     res.json(err);
