@@ -22,9 +22,10 @@ module.exports = (params, callback) => {
         if(response.statusCode == 200){
             var info = JSON.parse(body);
             // console.log(info);
-            callback(info);
+            callback(null, info);
         } else {
-            console.log('error: '+ response.statusCode)
+            console.log('error: '+ response.statusCode);
+            callback(response);
         }
     });
     // return callback(error, response, body) {

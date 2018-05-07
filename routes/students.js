@@ -9,20 +9,43 @@ const pool = require('../db');
 
 const router = Router();
 
-router.get('/detail/:id', (request, response, next) => {
-    var id = request.params['id'];
+// Get person id for upload face
+router.get('/detail/:id', function(req, res, next) {
+    var id = req.params['id'];
     pool.connect(function(error, connection, done) {
         if(connection == undefined){
-            _global.sendError(response, null, "Can't connect to database");
+            _global.sendError(res, null, "Can't connect to database");
             done();
             return console.log("Can't connect to database");
         }
-        connection.query('SELECT * FROM students WHERE id = $1', 
-        [id], 
-        (err, res) => {
-            if (err) return next(err);
-        
-            response.json(res.rows);
+        connection.query(format(`SELECT users.*,students.stud_id AS code, students.person_id,students.status,classes.id AS class_id ,classes.name AS class_name
+            FROM users,students,classes
+            WHERE users.id = %L AND users.id = students.id AND students.class_id = classes.id  LIMIT 1`, id), function(error, result, fields) {
+            if (error) {
+                _global.sendError(res, error.message);
+                done();
+                return console.log(error);
+            }
+            var student = result.rows[0];
+            connection.query(format(`SELECT courses.id, code, name, attendance_status, enrollment_status,
+                                (SELECT array_to_string(array_agg(CONCAT(users.first_name,' ',users.last_name)), E'\r\n')
+                                FROM teacher_teach_course,users
+                                WHERE users.id = teacher_teach_course.teacher_id AND
+                                    courses.id = teacher_teach_course.course_id AND
+                                    teacher_teach_course.teacher_role = 0) as lecturers,
+                                (SELECT COUNT(attendance_detail.attendance_id)
+                                FROM attendance,attendance_detail
+                                WHERE attendance_detail.student_id = student_enroll_course.student_id AND attendance_detail.attendance_type = 0 AND attendance.course_id = courses.id AND attendance.id = attendance_detail.attendance_id ) as absence_count
+                FROM student_enroll_course,courses,class_has_course
+                WHERE student_enroll_course.class_has_course_id = class_has_course.id AND class_has_course.course_id = courses.id AND student_enroll_course.student_id = %L`, id), function(error, result, fields) {
+                if (error) {
+                    _global.sendError(res, error.message);
+                    done();
+                    return console.log(error);
+                }
+                res.send({ result: 'success', student: student, current_courses: result.rows });
+                done();
+            });
         });
     });
 });
@@ -203,8 +226,12 @@ router.post('/add', (req, res, next) => {
             });
         });
     }
-    var responseAPI = requestAPI(dataAPI, function(data) {
-        var person_id = data['personId'];
+    requestAPI(dataAPI, function(error, result) {
+        if (error) {
+            _global.sendError(res, null, "Unknown Error");
+            return;
+        }
+        var person_id = result['personId'];
         if (person_id == undefined || person_id == '') {
             _global.sendError(res, null, "Cannot get Person Id");
             return;
@@ -212,6 +239,103 @@ router.post('/add', (req, res, next) => {
             addStudent(person_id);
         }
     });
+});
+
+router.post('/uploadFace', function(req, res, next) {
+    if (req.body.person_id == undefined || req.body.person_id == '') {
+        _global.sendError(res, null, "PersonId is required");
+        return;
+    }
+    if (req.body.face_image == undefined || req.body.face_image == '') {
+        _global.sendError(res, null, "Face Image URL is required");
+        return;
+    }
+    
+    var person_id = req.body.person_id;
+    var face_image = req.body.face_image;
+
+    var dataAPI = {
+        baseUrl: 'https://westcentralus.api.cognitive.microsoft.com',
+        uri: `/face/v1.0/persongroups/hcmus-test/persons/${person_id}/persistedFaces`,
+        headers: {
+            'Content-Type':'application/json',
+            'Ocp-Apim-Subscription-Key':'18db52d47bc5483f92d687a957c40c98'
+        },
+        method: 'POST',
+        body: {
+            "url": face_image
+        }
+    }   
+    function addFace(face_id){
+        // console.log('HERE');
+        pool.connect(function(error, connection, done) {
+            if (error) {
+                _global.sendError(res, error.message);
+                done();
+                return console.log(error);
+            }
+    
+            var new_student_has_face = [[
+                person_id,
+                face_id,
+                face_image,
+            ]];
+    
+            async.series([
+                //Start transaction
+                function(callback) {
+                    connection.query('BEGIN', (error) => {
+                        if (error) callback(error);
+                        else callback();
+                    });
+                },
+                //add data to student_has_faces table
+                function(callback) {
+                    connection.query(format('INSERT INTO student_has_faces (person_id, face_id, face_image) VALUES %L', new_student_has_face), function(error, result, fields) {
+                        if (error) {
+                            callback(error);
+                        }else{
+                            callback();
+                        }
+                    });
+                },
+                //Commit transaction
+                function(callback) {
+                    connection.query('COMMIT', (error) => {
+                        if (error) callback(error);
+                        else callback();
+                    });
+                },
+            ], function(error) {
+                if (error) {
+                    _global.sendError(res, error.message);
+                    connection.query('ROLLBACK', (error) => {
+                        if (error) return console.log(error);
+                    });
+                    done(error);
+                    return console.log(error);
+                } else {
+                    console.log('Success adding face to student!---------------------------------------');
+                    res.send({ result: 'success', message: 'Face Added Successfully' });
+                    done();
+                }
+            });
+        });
+    }
+    requestAPI(dataAPI, function(error, result) {
+        if (error) {
+            _global.sendError(res, null, "Unknown Error");
+            return;
+        }
+        var face_id = result['persistedFaceId'];
+        if (face_id == undefined || face_id == '') {
+            _global.sendError(res, null, "Cannot get Face Id");
+            return;
+        } else {
+            addFace(face_id);
+        }
+    });
+    
 });
 
 module.exports = router;
