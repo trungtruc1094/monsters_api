@@ -7,5 +7,7 @@ module.exports = {
         student: 1,
         teacher: 2,
         staff: 3,
-    }
+    },
+    largePersonGroup: 'hcmus-test',
+    faceApiKey: '18db52d47bc5483f92d687a957c40c98'
 }

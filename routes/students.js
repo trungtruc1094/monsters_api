@@ -9,7 +9,7 @@ const pool = require('../db');
 
 const router = Router();
 
-// Get person id for upload face
+// Get person id for upload face - student
 router.get('/detail/:id', function(req, res, next) {
     var id = req.params['id'];
     pool.connect(function(error, connection, done) {
@@ -83,7 +83,6 @@ router.post('/add', (req, res, next) => {
         _global.sendError(res, null, "Invalid Phone Number");
         return;
     }
-
     var new_class_id = req.body.class_id;
     var new_program_id = req.body.program_id;
     var new_code = req.body.code;
@@ -93,13 +92,12 @@ router.post('/add', (req, res, next) => {
     var new_phone = req.body.phone;
     var new_note = req.body.note;
     var new_person_id;
-    // console.log('Here');
     var dataAPI = {
         baseUrl: 'https://westcentralus.api.cognitive.microsoft.com',
-        uri: '/face/v1.0/persongroups/hcmus-test/persons',
+        uri: `/face/v1.0/largepersongroups/${_global.largePersonGroup}/persons`,
         headers: {
             'Content-Type':'application/json',
-            'Ocp-Apim-Subscription-Key':'18db52d47bc5483f92d687a957c40c98'
+            'Ocp-Apim-Subscription-Key':`${_global.faceApiKey}`
         },
         method: 'POST',
         body: {
@@ -110,7 +108,6 @@ router.post('/add', (req, res, next) => {
     function addStudent(personId){
         new_person_id = personId;
         pool.connect(function(error, connection, done) {
-            // console.log('Here');
             if (error) {
                 _global.sendError(res, error.message);
                 done();
@@ -241,6 +238,7 @@ router.post('/add', (req, res, next) => {
     });
 });
 
+// Upload Face for student
 router.post('/uploadFace', function(req, res, next) {
     if (req.body.person_id == undefined || req.body.person_id == '') {
         _global.sendError(res, null, "PersonId is required");
@@ -256,7 +254,7 @@ router.post('/uploadFace', function(req, res, next) {
 
     var dataAPI = {
         baseUrl: 'https://westcentralus.api.cognitive.microsoft.com',
-        uri: `/face/v1.0/persongroups/hcmus-test/persons/${person_id}/persistedFaces`,
+        uri: `/face/v1.0/largepersongroups/${_global.largePersonGroup}/persons/${person_id}/persistedFaces`,
         headers: {
             'Content-Type':'application/json',
             'Ocp-Apim-Subscription-Key':'18db52d47bc5483f92d687a957c40c98'
