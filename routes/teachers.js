@@ -60,7 +60,7 @@ router.post('/verifyFace', function(req, res, next) {
         }
         var isIdentical = result['isIdentical'];
         var confidence = result['confidence'];
-        if (isIdentical == undefined || isIdentical == '') {
+        if (isIdentical == undefined) {
             _global.sendError(res, null, "Cannot get is Identical");
             return;
         } 
